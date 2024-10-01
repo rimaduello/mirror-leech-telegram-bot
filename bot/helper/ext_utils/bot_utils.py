@@ -160,7 +160,7 @@ def get_size_bytes(size):
 async def get_content_type(url):
     try:
         async with AsyncClient() as client:
-            response = await client.get(url, allow_redirects=True, verify=False)
+            response = await client.head(url, follow_redirects=True)
             return response.headers.get("Content-Type")
     except:
         return None
