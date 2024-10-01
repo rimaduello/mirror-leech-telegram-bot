@@ -14,10 +14,10 @@ from uuid import uuid4
 from base64 import b64decode
 
 from bot import config_dict
-from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
-from bot.helper.ext_utils.help_messages import PASSWORD_ERROR_MESSAGE
-from bot.helper.ext_utils.links_utils import is_share_link
-from bot.helper.ext_utils.status_utils import speed_string_to_bytes
+from ...ext_utils.exceptions import DirectDownloadLinkException
+from ...ext_utils.help_messages import PASSWORD_ERROR_MESSAGE
+from ...ext_utils.links_utils import is_share_link
+from ...ext_utils.status_utils import speed_string_to_bytes
 
 user_agent = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
@@ -135,6 +135,10 @@ def direct_link_generator(link):
             "gibibox.com",
             "goaibox.com",
             "terasharelink.com",
+            "teraboxlink.com",
+            "freeterabox.com",
+            "1024terabox.com",
+            "teraboxshare.com"
         ]
     ):
         return terabox(link)
@@ -572,6 +576,8 @@ def terabox(url, video_quality="HD Video", save_dir="HD_Video"):
         "https://ytshorts.savetube.me/api/v1/terabox-downloader",
         f"https://teraboxvideodownloader.nepcoderdevs.workers.dev/?url={terabox_url}",
         f"https://terabox.udayscriptsx.workers.dev/?url={terabox_url}",
+        f"https://mavimods.serv00.net/Mavialt.php?url={terabox_url}",
+        f"https://mavimods.serv00.net/Mavitera.php?url={terabox_url}",
     ]
 
     headers = {
