@@ -6,7 +6,6 @@ from asyncio import (
     create_subprocess_shell,
     sleep,
     gather,
-    wait_for,
 )
 from dotenv import load_dotenv
 from functools import partial
@@ -35,15 +34,14 @@ from bot import (
     qbittorrent_client,
     sabnzbd_client,
     bot,
-    jd_downloads,
     nzb_options,
     get_nzb_options,
     get_qb_options,
+    jd_lock,
 )
 from ..helper.ext_utils.bot_utils import (
     SetInterval,
     sync_to_async,
-    retry_function,
     new_task,
 )
 from ..helper.ext_utils.db_handler import database
@@ -333,7 +331,7 @@ async def edit_variable(_, message, pre_message, key):
     ]:
         await rclone_serve_booter()
     elif key in ["JD_EMAIL", "JD_PASS"]:
-        jdownloader.initiate()
+        await jdownloader.boot()
     elif key == "RSS_DELAY":
         add_job()
     elif key == "USET_SERVERS":
@@ -442,29 +440,12 @@ async def edit_nzb_server(_, message, pre_message, key, index=0):
 
 
 async def sync_jdownloader():
-    if not config_dict["DATABASE_URL"] or jdownloader.device is None:
-        return
-    try:
-        await wait_for(retry_function(jdownloader.update_devices), timeout=10)
-    except:
-        is_connected = await jdownloader.jdconnect()
-        if not is_connected:
-            LOGGER.error(jdownloader.error)
+    async with jd_lock:
+        if not config_dict["DATABASE_URL"] or not jdownloader.is_connected:
             return
-        isDeviceConnected = await jdownloader.connectToDevice()
-        if not isDeviceConnected:
-            LOGGER.error(jdownloader.error)
-            return
-    await jdownloader.device.system.exit_jd()
+        await jdownloader.device.system.exit_jd()
     if await aiopath.exists("cfg.zip"):
         await remove("cfg.zip")
-    is_connected = await jdownloader.jdconnect()
-    if not is_connected:
-        LOGGER.error(jdownloader.error)
-        return
-    isDeviceConnected = await jdownloader.connectToDevice()
-    if not isDeviceConnected:
-        LOGGER.error(jdownloader.error)
     await (
         await create_subprocess_exec("7z", "a", "cfg.zip", "/JDownloader/cfg")
     ).wait()
@@ -595,14 +576,8 @@ async def edit_bot_settings(client, query):
                 show_alert=True,
             )
             return
-        if jd_downloads:
-            await query.answer(
-                "You can't sync settings while using jdownloader!",
-                show_alert=True,
-            )
-            return
         await query.answer(
-            "Syncronization Started. JDownloader will get restarted. It takes up to 5 sec!",
+            "Syncronization Started. JDownloader will get restarted. It takes up to 10 sec!",
             show_alert=True,
         )
         await sync_jdownloader()
@@ -668,8 +643,6 @@ async def edit_bot_settings(client, query):
         elif data[2] == "INCOMPLETE_TASK_NOTIFIER" and config_dict["DATABASE_URL"]:
             await database.trunc_table("tasks")
         elif data[2] in ["JD_EMAIL", "JD_PASS"]:
-            jdownloader.device = None
-            jdownloader.error = "JDownloader Credentials not provided!"
             await create_subprocess_exec("pkill", "-9", "-f", "java")
         elif data[2] == "USENET_SERVERS":
             for s in config_dict["USENET_SERVERS"]:
@@ -960,8 +933,8 @@ async def load_config():
         RCLONE_PATH = ""
 
     DEFAULT_UPLOAD = environ.get("DEFAULT_UPLOAD", "")
-    if DEFAULT_UPLOAD != "rc":
-        DEFAULT_UPLOAD = "gd"
+    if DEFAULT_UPLOAD != "gd":
+        DEFAULT_UPLOAD = "rc"
 
     RCLONE_FLAGS = environ.get("RCLONE_FLAGS", "")
     if len(RCLONE_FLAGS) == 0:
@@ -1184,6 +1157,13 @@ async def load_config():
     THUMBNAIL_LAYOUT = environ.get("THUMBNAIL_LAYOUT", "")
     THUMBNAIL_LAYOUT = "" if len(THUMBNAIL_LAYOUT) == 0 else THUMBNAIL_LAYOUT
 
+    FFMPEG_CMDS = environ.get("FFMPEG_CMDS", "")
+    try:
+        FFMPEG_CMDS = [] if len(FFMPEG_CMDS) == 0 else eval(FFMPEG_CMDS)
+    except:
+        LOGGER.error(f"Wrong FFMPEG_CMDS format: {FFMPEG_CMDS}")
+        FFMPEG_CMDS = []
+
     await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
     BASE_URL = environ.get("BASE_URL", "").rstrip("/")
     if len(BASE_URL) == 0:
@@ -1235,6 +1215,7 @@ async def load_config():
             "DOWNLOAD_DIR": DOWNLOAD_DIR,
             "EQUAL_SPLITS": EQUAL_SPLITS,
             "EXTENSION_FILTER": EXTENSION_FILTER,
+            "FFMPEG_CMDS": FFMPEG_CMDS,
             "FILELION_API": FILELION_API,
             "GDRIVE_ID": GDRIVE_ID,
             "INCOMPLETE_TASK_NOTIFIER": INCOMPLETE_TASK_NOTIFIER,
