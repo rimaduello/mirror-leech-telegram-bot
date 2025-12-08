@@ -35,7 +35,7 @@ from ..helper.ext_utils.bot_utils import (
     new_task,
 )
 from ..core.config_manager import Config
-from ..core.mltb_client import TgClient
+from ..core.telegram_manager import TgClient
 from ..core.torrent_manager import TorrentManager
 from ..core.startup import update_qb_options, update_nzb_options, update_variables
 from ..helper.ext_utils.db_handler import database
@@ -558,7 +558,7 @@ async def edit_bot_settings(client, query):
             )
             return
         await query.answer(
-            "Syncronization Started. JDownloader will get restarted. It takes up to 10 sec!",
+            "Synchronization Started. JDownloader will get restarted. It takes up to 10 sec!",
             show_alert=True,
         )
         await sync_jdownloader()
@@ -584,6 +584,8 @@ async def edit_bot_settings(client, query):
                     intervals["status"][key] = SetInterval(
                         value, update_status_message, key
                     )
+        elif data[2] == "RSS_SIZE_LIMIT":
+            value = 0
         elif data[2] == "EXCLUDED_EXTENSIONS":
             excluded_extensions.clear()
             excluded_extensions.extend(["aria2", "!qB"])
@@ -644,14 +646,14 @@ async def edit_bot_settings(client, query):
         await database.update_nzb_config()
     elif data[1] == "syncnzb":
         await query.answer(
-            "Syncronization Started. It takes up to 2 sec!", show_alert=True
+            "Synchronization Started. It takes up to 2 sec!", show_alert=True
         )
         nzb_options.clear()
         await update_nzb_options()
         await database.update_nzb_config()
     elif data[1] == "syncqbit":
         await query.answer(
-            "Syncronization Started. It takes up to 2 sec!", show_alert=True
+            "Synchronization Started. It takes up to 2 sec!", show_alert=True
         )
         qbit_options.clear()
         await update_qb_options()
