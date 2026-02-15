@@ -11,13 +11,10 @@ from re import search as re_search, escape
 from time import time
 from aioshutil import rmtree
 
-from ... import LOGGER, cpu_no, DOWNLOAD_DIR
+from ... import LOGGER, DOWNLOAD_DIR, threads, cores
 from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, is_archive, is_archive_split
 from .status_utils import time_to_seconds
-
-threads = max(1, cpu_no // 2)
-cores = ",".join(str(i) for i in range(threads))
 
 
 async def create_thumb(msg, _id=""):
@@ -445,6 +442,9 @@ class FFMpeg:
         output = f"{base_name}.{ext}"
         if retry:
             cmd = [
+                "taskset",
+                "-c",
+                f"{cores}",
                 "ffmpeg",
                 "-hide_banner",
                 "-loglevel",
@@ -464,13 +464,16 @@ class FFMpeg:
                 output,
             ]
             if ext == "mp4":
-                cmd[14:14] = ["-c:s", "mov_text"]
+                cmd[17:17] = ["-c:s", "mov_text"]
             elif ext == "mkv":
-                cmd[14:14] = ["-c:s", "ass"]
+                cmd[17:17] = ["-c:s", "ass"]
             else:
-                cmd[14:14] = ["-c:s", "copy"]
+                cmd[17:17] = ["-c:s", "copy"]
         else:
             cmd = [
+                "taskset",
+                "-c",
+                f"{cores}",
                 "ffmpeg",
                 "-hide_banner",
                 "-loglevel",
@@ -522,6 +525,9 @@ class FFMpeg:
         base_name = ospath.splitext(audio_file)[0]
         output = f"{base_name}.{ext}"
         cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
             "ffmpeg",
             "-hide_banner",
             "-loglevel",
@@ -592,6 +598,9 @@ class FFMpeg:
         filter_complex += f"concat=n={len(segments)}:v=1:a=1[vout][aout]"
 
         cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
             "ffmpeg",
             "-hide_banner",
             "-loglevel",
@@ -653,6 +662,9 @@ class FFMpeg:
         while i <= parts or start_time < duration - 4:
             out_path = f_path.replace(file_, f"{base_name}.part{i:03}{extension}")
             cmd = [
+                "taskset",
+                "-c",
+                f"{cores}",
                 "ffmpeg",
                 "-hide_banner",
                 "-loglevel",
@@ -680,8 +692,8 @@ class FFMpeg:
                 out_path,
             ]
             if not multi_streams:
-                del cmd[12]
-                del cmd[12]
+                del cmd[15]
+                del cmd[15]
             if self._listener.is_cancelled:
                 return False
             self._listener.subproc = await create_subprocess_exec(
@@ -742,3 +754,4 @@ class FFMpeg:
             start_time += lpd - 3
             i += 1
         return True
+

@@ -15,8 +15,6 @@ async def send_message(message, text, buttons=None, block=True):
     try:
         return await message.reply(
             text=text,
-            quote=True,
-            disable_web_page_preview=True,
             disable_notification=True,
             reply_markup=buttons,
         )
@@ -35,7 +33,6 @@ async def edit_message(message, text, buttons=None, block=True):
     try:
         return await message.edit(
             text=text,
-            disable_web_page_preview=True,
             reply_markup=buttons,
         )
     except FloodWait as f:
@@ -52,7 +49,7 @@ async def edit_message(message, text, buttons=None, block=True):
 async def send_file(message, file, caption=""):
     try:
         return await message.reply_document(
-            document=file, quote=True, caption=caption, disable_notification=True
+            document=file, caption=caption, disable_notification=True
         )
     except FloodWait as f:
         LOGGER.warning(str(f))
@@ -69,14 +66,13 @@ async def send_rss(text, chat_id, thread_id):
         return await app.send_message(
             chat_id=chat_id,
             text=text,
-            disable_web_page_preview=True,
             message_thread_id=thread_id,
             disable_notification=True,
         )
     except (FloodWait, FloodPremiumWait) as f:
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
-        return await send_rss(text)
+        return await send_rss(text, chat_id, thread_id)
     except Exception as e:
         LOGGER.error(str(e))
         return str(e)
